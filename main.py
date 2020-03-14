@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+# PILが7.0.0だとPILLOW_VERSIONが存在しないため
+# Errorになるので、無理やり代入（あまり良くないかも）
+import PIL
+PIL.PILLOW_VERSION = PIL.__version__
 from torchvision import transforms
 
 from generator import Generator
