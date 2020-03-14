@@ -150,7 +150,7 @@ if __name__ == '__main__':
     logs = []
 
     # 学習 (300 Epochs)
-    for epoch in range(1):
+    for epoch in range(300):
         t_epoch_start = time.time()
         epoch_g_loss = 0.0
         epoch_d_loss = 0.0
