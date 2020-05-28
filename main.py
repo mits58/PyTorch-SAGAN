@@ -1,27 +1,30 @@
-import json
 import os
-import tarfile
 import time
-import urllib.request
-import zipfile
 
 from PIL import Image
 import numpy as np
-import sklearn
 from sklearn.datasets import fetch_openml
 import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-# PILが7.0.0だとPILLOW_VERSIONが存在しないため
-# Errorになるので、無理やり代入（あまり良くないかも）
 import PIL
-PIL.PILLOW_VERSION = PIL.__version__
-from torchvision import transforms
+
+from traceback import print_exception
+import sys
+import io
+import requests
+import psutil
+from functools import wraps
 
 from generator import Generator
 from discriminator import Discriminator
+import setting
+
+# PILが7.0.0だとPILLOW_VERSIONが存在しないため
+# Errorになるので、無理やり代入（あまり良くないかも）
+PIL.PILLOW_VERSION = PIL.__version__
 
 
 def make_datapath_list():
@@ -102,19 +105,56 @@ def make_data():
             count8+=1
 
 
+def notify(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        output = io.StringIO()
+        try:
+            func(*args, **kwargs)
+            send_slack_msg()
+        except Exception:
+            exp_type, exp_val, tb = sys.exc_info()
+            print_exception(exp_type, exp_val, tb, limit=1, file=output)
+            send_slack_msg(output.getvalue(), success=False)
+            raise
 
-if __name__ == '__main__':
+    return wrapper
+
+
+def send_slack_msg(msg="", success=True):
+    web_hock_url = setting.web_hock_url
+    header = {'Content-type': 'application/json'}
+
+    proc_name = " ".join(psutil.Process().cmdline()[1:])
+
+    if success:
+        msg = f"Your job {proc_name} succeeded! :kissing_heart:\n{msg}"
+    else:
+        msg = f"Sorry, your job {proc_name} failed! :zany_face:\n```{msg}```"
+
+    data = {'text': msg}
+    response = requests.post(web_hock_url, headers=header, json=data)
+    if response.ok:
+        print('Sent a message!')
+    else:
+        print("Unable to send a message...")
+
+
+@notify
+def main():
     # データセットの準備
     make_data()
     train_img_list = make_datapath_list()
     mean, std = (0.5, ), (0.5, )
     train_dataset = GAN_Img_Dataset(train_img_list, ImageTransform(mean, std))
     batch_size = 64
-    train_dataloader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_dataloader = data.DataLoader(train_dataset,
+                                       batch_size=batch_size, shuffle=True)
 
     # モデルの定義と重み初期化
     G = Generator(z_dim=20, image_size=64)
     D = Discriminator(image_size=64)
+
     def weights_init(m):
         classname = m.__class__.__name__
         if classname.find('Conv') != -1:
@@ -166,7 +206,6 @@ if __name__ == '__main__':
             label_real = torch.full((batch_num, ), 1).to(device)
             label_fake = torch.full((batch_num, ), 0).to(device)
 
-
             # --- Discriminatorの学習 --- #
             # 真の画像を判定
             d_out_real, _, _ = D(batch)
@@ -186,7 +225,6 @@ if __name__ == '__main__':
             d_loss.backward()
             d_optimizer.step()
 
-
             # --- Generatorの学習 --- #
             input_z = torch.randn(batch_num, z_dim).to(device)
             input_z = input_z.view(input_z.size(0), input_z.size(1), 1, 1)
@@ -205,9 +243,9 @@ if __name__ == '__main__':
 
         t_epoch_finish = time.time()
         print('epoch {:3d}/300 || D_Loss: {:.4f} || G_Loss: {:.4f} || time: {:.4f} sec.'.format(
-            epoch, epoch_d_loss / batch_size, epoch_g_loss / batch_size, t_epoch_finish - t_epoch_start
+            epoch, epoch_d_loss / batch_size, epoch_g_loss / batch_size,
+            t_epoch_finish - t_epoch_start
         ))
-
 
     # --- 画像生成・可視化する --- #
     test_size = 5   # 可視化する個数
@@ -229,3 +267,7 @@ if __name__ == '__main__':
         plt.imshow(am.cpu().detach().numpy(), 'Reds')
 
     plt.savefig('visualization.png')
+
+
+if __name__ == '__main__':
+    main()
