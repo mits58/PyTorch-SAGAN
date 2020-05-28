@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+from torchvision import transforms
 import PIL
 
 from traceback import print_exception
