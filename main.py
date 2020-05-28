@@ -1,5 +1,9 @@
+import json
 import os
+import tarfile
 import time
+import urllib.request
+import zipfile
 
 from PIL import Image
 import numpy as np
@@ -10,6 +14,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 import PIL
+# PIL.PILLOW_VERSION = PIL.__version__
+from torchvision import transforms
 
 from traceback import print_exception
 import sys
@@ -24,8 +30,6 @@ import setting
 
 # PILが7.0.0だとPILLOW_VERSIONが存在しないため
 # Errorになるので、無理やり代入（あまり良くないかも）
-PIL.PILLOW_VERSION = PIL.__version__
-from torchvision import transforms
 
 
 def make_datapath_list():
