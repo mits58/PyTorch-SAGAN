@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-from torchvision import transforms
 import PIL
 
 from traceback import print_exception
@@ -26,6 +25,7 @@ import setting
 # PILが7.0.0だとPILLOW_VERSIONが存在しないため
 # Errorになるので、無理やり代入（あまり良くないかも）
 PIL.PILLOW_VERSION = PIL.__version__
+from torchvision import transforms
 
 
 def make_datapath_list():
